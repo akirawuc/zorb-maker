@@ -1,42 +1,84 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
+import {  useAccount } from 'wagmi';
 
-interface Props {
-  onImageUpload: (imageData: ImageData) => void;
+type UploadProps ={
+    className?: string;
 }
+const Upload: React.FC<UploadProps> = ({className}) => {
+  const [selectedFile, setSelectedFile] = useState<File | undefined>();
+  const [uploading, setUploading] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const { address, connector, isConnected } = useAccount();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-const UploadImage: React.FC<Props> = ({ onImageUpload }) => {
-  const [image, setImage] = useState<string | null>(null);
 
-  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result as string);
-        const img = new Image();
-        img.src = reader.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0);
-          const imageData = ctx?.getImageData(0, 0, img.width, img.height);
-          if (imageData) {
-            onImageUpload(imageData);
-          }
-        };
-      };
-      reader.readAsDataURL(file);
+    const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files.length > 0) {
+    setSelectedFile(event.target.files[0]);
+    
+    const fileReader = new FileReader();
+    fileReader.readAsDataURL(event.target.files[0]);
+    fileReader.onload = (e) => {
+        if (e.target){
+      setImageSrc(e.target.result as string);
+        }
+    };
+        }
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    setErrorMessage(null);  // Clear any previous error messages
+
+    event.preventDefault();
+      if (selectedFile){
+
+    let formData = new FormData();
+    formData.append('file', selectedFile);
+
+      setUploading(true);
+      const response = await fetch('https://us-central1-fleet-surface-347907.cloudfunctions.net/add_noggles', {
+          method: 'POST',
+          body: formData,
+        });
+
+    if (response.ok) {
+        setUploading(false);
+      console.log('Uploaded successfully!');
+      const blob = await response.blob();
+      const imgUrl = URL.createObjectURL(blob);
+      setImageSrc(imgUrl);
+    }  else if (response.status === 403) {
+      // Quota exceeded
+      const data = await response.json();
+      setErrorMessage(data.error);  // Set error message
+      // You could set some state here to show an error message in your UI
+    } else {
+  setErrorMessage('Upload failed');  // Other errors
     }
+      }
   };
 
   return (
-    <div>
-      <input type="file" onChange={handleImageChange} />
-      {image && <img src={image} alt="Uploaded preview" />}
+     <div className={className + " flex flex-col items-center"}>
+      <form onSubmit={handleSubmit} className="flex items-center space-x-2">
+        <div className="border border-gray-300 p-2 rounded">
+          <input type="file" onChange={handleUpload} />
+        </div>
+      </form>
+
+      {errorMessage && <p className="text-red-500">{errorMessage}</p>}
+      {uploading && <div className="spinner mt-6"></div>}
+      {imageSrc && !uploading && (
+        <div className="mt-6 flex flex-col items-center">
+          <img
+            src={imageSrc}
+            alt="Uploaded file"
+            className=" max-h-lg object-contain"
+          />
+        </div>
+      )}
     </div>
   );
 };
 
-export default UploadImage;
+export default Upload;

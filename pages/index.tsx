@@ -1,9 +1,19 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import React, { useState } from 'react';
 import type { NextPage } from 'next';
+import Upload from '../components/uploadImage';
+// import {findDominantColor} from '../components/findDominantColor';
 import Head from 'next/head';
 import styles from '../styles/Home.module.css';
 
 const Home: NextPage = () => {
+  const [dominantColor, setDominantColor] = useState([0, 0, 0]);
+
+  const handleImageUpload = (imageData: ImageData) => {
+      console.log(imageData);
+    // const color = findDominantColor(imageData);
+    // setDominantColor(color);
+  };
   return (
     <div className={styles.container}>
       <Head>
@@ -17,7 +27,8 @@ const Home: NextPage = () => {
 
       <main className={styles.main}>
         <ConnectButton />
-        <div>
+        <div className="w-2/3">
+            <Upload />
         </div>
 
       </main>
